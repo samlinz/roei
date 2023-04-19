@@ -4,7 +4,13 @@ const fs = require("fs/promises");
 const path = require("path");
 const dotenv = require("dotenv");
 const { exec } = require("child_process");
-const { parseISO, formatISO, format } = require("date-fns");
+const {
+  parseISO,
+  formatISO,
+  format,
+  differenceInHours,
+  differenceInMinutes,
+} = require("date-fns");
 const { log } = require("console");
 dotenv.config();
 
@@ -105,7 +111,47 @@ const doBackup = async ({ file }) => {
   // console.log(`Backup created: ${backupFile}`);
 };
 
-const handleList = async ({ file }) => {};
+const isRowLogRow = (row) => {
+  if (!row) return false;
+  if (row.trim().length === 0) return false;
+  if (!row.includes(";")) return false;
+  return true;
+};
+
+const handleList = async ({ file }) => {
+  const rows = await getRows({ file });
+  const result = [];
+  const currentDate = new Date().getDate();
+
+  let firstTimestamp = null;
+
+  for (const row of rows) {
+    if (!isRowLogRow(row)) continue;
+    const parsed = parseRow(row);
+    if (!parsed) continue;
+    if (parseISO(parsed.date).getDate() !== currentDate) continue;
+    if (!firstTimestamp) {
+      firstTimestamp = parsed.date;
+    }
+    result.push(row);
+  }
+
+  const now = new Date();
+  const firstTimestampParsed = parseISO(firstTimestamp);
+  const diff = differenceInMinutes(now, firstTimestampParsed);
+  const diffHours = (diff / 60).toFixed(2);
+  console.log(
+    `Total hours today from ${firstTimestampParsed.getHours()}:${firstTimestampParsed
+      .getMinutes()
+      .toString()
+      .padStart(2, "0")} to ${now.getHours()}:${now
+      .getMinutes()
+      .toString()
+      .padStart(2, "0")}: ${diffHours}`
+  );
+  console.log("Rows today:");
+  console.log(result.join("\n"));
+};
 
 const writeRows = async ({ rows, file }) => {
   const data = rows.join("\n");
@@ -125,11 +171,6 @@ const handleRemove = async ({ file }) => {
 
 const handleOpen = async ({ file }) => {
   console.log(`Opening file: ${file}`);
-  //   const cmd = ["open", file];
-  //   const cmd = [
-  //     "/Applications/Sublime Text.app/Contents/SharedSupport/bin/subl",
-  //     ["-n", file],
-  //   ];
   const cmd = [
     "'/Applications/Sublime Text.app/Contents/SharedSupport/bin/subl'",
     file,
