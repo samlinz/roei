@@ -10,6 +10,7 @@ const {
   format,
   differenceInHours,
   differenceInMinutes,
+  isSaturday,
 } = require("date-fns");
 const { log } = require("console");
 dotenv.config();
@@ -60,7 +61,7 @@ const getCategory =
 
 const getFormattedDate = (date) => {
   //   return formatISO(date);
-  return format(date, "yyyy-MM-dd HH:MM");
+  return format(date, "yyyy-MM-dd HH:mm");
 };
 
 const getFullDateForTime = (time) => {
@@ -79,7 +80,7 @@ const parseRow = (row) => {
   const s = row.split(";");
   return {
     date: s[0].trim(),
-    category: s[1].toUpperCase(),
+    category: s[1].trim().toUpperCase(),
     desc: s[2].trim(),
   };
 };
@@ -158,6 +159,10 @@ const writeRows = async ({ rows, file }) => {
   await fs.writeFile(file, data);
 };
 
+const handleStatus = async ({ file }) => {
+  console.log("Status");
+};
+
 const handleRemove = async ({ file }) => {
   await doBackup({ file });
   const rows = await getRows({ file });
@@ -167,6 +172,84 @@ const handleRemove = async ({ file }) => {
   }
   await writeRows({ rows, file });
   console.log(`REMOVED ${lastRow}`);
+};
+
+const getActivity = async (row) => {
+  const { date, category, desc } = parseRow(row);
+  const parts = desc.split(" ");
+  const firstPart = parts[0];
+  const rest = parts.slice(1).join(" ");
+  if (firstPart === "START") {
+    return rest;
+  }
+  return null;
+};
+
+const handleActivity =
+  ({ getConfig }) =>
+  async ({ file, isStart, isStop, params }) => {
+    const rows = await getRows({ file });
+    const lastRow = rows[rows.length - 1];
+    const activityName = await getActivity(lastRow);
+    const {
+      date: lastDate,
+      category: lastCategory,
+      desc: lastDesc,
+    } = parseRow(lastRow);
+
+    const { category, desc, time } = isStart
+      ? parseLogParams({ params, getConfig })
+      : {};
+    const fullDateForTime = isStart ? getFullDateForTime(time) : null;
+
+    const startActivity = async (name) => {
+      const row = getLogRow({
+        category,
+        time: fullDateForTime,
+        desc,
+        prefix: "START",
+      });
+      await appendRow({ file, row, time: fullDateForTime });
+    };
+
+    const stopActivity = async (name) => {
+      const time = getFormattedDate(new Date());
+      const descFixed = lastDesc.replace("START ", "");
+      const row = getLogRow({
+        category: lastCategory,
+        desc: descFixed,
+        prefix: "STOP",
+        time,
+      });
+      await appendRow({ file, row, time });
+    };
+
+    if (activityName && isStart) {
+      console.log(`Activity ${activityName} already started -> stopping`);
+      await stopActivity(activityName);
+    }
+
+    if (!activityName && isStop) {
+      console.log(`No activity running`);
+    } else if (activityName && isStop) {
+      console.log(`Stopping activity ${activityName}`);
+      await stopActivity(activityName);
+    } else if (!activityName && isStart && !desc) {
+      console.log(`No activity name provided`);
+    } else if (isStart && desc) {
+      console.log(`Starting activity ${desc}`);
+      await startActivity(desc);
+    } else {
+      console.error("fug :D");
+    }
+  };
+
+const getLogRow = ({ category, date, time, desc, prefix, postfix }) => {
+  const fullDesc = [prefix, desc || "-", postfix].filter((x) => x).join(" ");
+  const fullRow = `${
+    time || getFormattedDate(date)
+  }; ${category.toUpperCase()}; ${fullDesc}`;
+  return fullRow;
 };
 
 const handleOpen = async ({ file }) => {
@@ -179,57 +262,81 @@ const handleOpen = async ({ file }) => {
   await exec(cmd);
 };
 
+const appendRow = async ({ file, row, time }) => {
+  await doBackup({ file });
+
+  const rows = await getRows({ file });
+  const newRows = [...rows];
+  const lastRow = rows.pop();
+  const lastDate = parseRow(lastRow)?.date;
+  const lastDateDate = lastDate ? parseISO(lastDate).getDate() : null;
+  const isDateSame =
+    lastDate !== null && lastDateDate === parseISO(time).getDate();
+
+  if (!isDateSame) {
+    const TIME_CHANGE_STR = "======";
+    newRows.push(TIME_CHANGE_STR);
+  }
+
+  newRows.push(row);
+  await writeRows({
+    rows: newRows,
+    file,
+  });
+
+  console.log(`-> ${row}`);
+};
+
+const parseLogParams = ({ getConfig, params }) => {
+  const [cmd1, cmd2, cmd3, cmd4] = params;
+
+  const isFirstCommandLog = ["log", "start", "stop"].includes(cmd1);
+  const _category = isFirstCommandLog ? cmd2 : cmd1;
+  const time = isFirstCommandLog ? cmd3 : cmd2;
+  const timeValid = isTimeValid(time);
+  const desc = isFirstCommandLog
+    ? timeValid
+      ? params.slice(3).join(" ")
+      : params.slice(2).join(" ")
+    : timeValid
+    ? params.slice(2).join(" ")
+    : params.slice(1).join(" ");
+
+  // Validate category
+  const category = getCategory({ getConfig })(_category);
+  // console.log({
+  //   _category,
+  //   category,
+  //   time,
+  //   desc,
+  //   params,
+  // });
+  if (!category) {
+    console.error(`Invalid category: ${_category}`);
+    process.exit(1);
+  }
+
+  return {
+    category,
+    desc,
+    time,
+  };
+};
+
 const handleAddLog =
   ({ getConfig }) =>
   async ({ file, params }) => {
-    const [cmd1, cmd2, cmd3, cmd4] = params;
-
-    const isFirstCommandLog = cmd1 === "log";
-    const _category = isFirstCommandLog ? cmd2 : cmd1;
-    const time = isFirstCommandLog ? cmd3 : cmd2;
-    const timeValid = isTimeValid(time);
-    const desc = isFirstCommandLog
-      ? timeValid
-        ? params.slice(3).join(" ")
-        : params.slice(2).join(" ")
-      : timeValid
-      ? params.slice(2).join(" ")
-      : params.slice(1).join(" ");
-
-    // Validate category
-    const category = getCategory({ getConfig })(_category);
-    if (!category) {
-      console.error(`Invalid category: ${_category}`);
-      process.exit(1);
-    }
+    const { category, desc, time } = parseLogParams({ params, getConfig });
+    const fullDateForTime = getFullDateForTime(time);
 
     // Create log row
-    const getFullDate = getFullDateForTime(time);
-    const fullRow = `${getFullDate}; ${category.toUpperCase()}; ${desc || "-"}`;
-
-    await doBackup({ file });
-
-    const rows = await getRows({ file });
-    const newRows = [...rows];
-    const lastRow = rows.pop();
-    const lastDate = parseRow(lastRow)?.date;
-    const lastDateDate = lastDate ? parseISO(lastDate).getDate() : null;
-    const isDateSame =
-      lastDate !== null && lastDateDate === parseISO(getFullDate).getDate();
-
-    if (!isDateSame) {
-      const TIME_CHANGE_STR = "======";
-      newRows.push(TIME_CHANGE_STR);
-    }
-
-    newRows.push(fullRow);
-    //   fs.writeFileSync(filePathFull, newRows.join("\n"));
-    await writeRows({
-      rows: newRows,
-      file,
+    const fullRow = getLogRow({
+      category,
+      time: fullDateForTime,
+      desc,
     });
 
-    console.log(`-> ${fullRow}`);
+    await appendRow({ file, row: fullRow, time: fullDateForTime });
   };
 
 const run = async () => {
@@ -248,31 +355,41 @@ const run = async () => {
   const params = args.slice(2);
   const [cmd1, cmd2, cmd3, cmd4] = params;
 
+  const ctx = {
+    file: filePathFull,
+    params,
+  };
+
+  if (!cmd1) {
+    // console.log("No command provided");
+    // process.exit(1);
+    return await handleStatus(ctx);
+  }
+
   const isCommandList = cmd1 === "list";
   const isCommandRemove = cmd1 === "rm";
   const isCommandOpen = cmd1 === "open";
+  const isCommandStart = cmd1 === "start";
+  const isCommandStop = cmd1 === "stop";
   //   const isCommandLog = !isCommandList;
 
   if (isCommandList) {
-    await handleList({
-      file: filePathFull,
-    });
+    await handleList(ctx);
   } else if (isCommandRemove) {
-    await handleRemove({
-      file: filePathFull,
-    });
+    await handleRemove(ctx);
   } else if (isCommandOpen) {
-    await handleOpen({
-      file: filePathFull,
+    await handleOpen(ctx);
+  } else if (isCommandStart || isCommandStop) {
+    await handleActivity({ getConfig })({
+      ...ctx,
+      isStart: isCommandStart,
+      isStop: isCommandStop,
     });
   } else {
     // Default is add new log
     await handleAddLog({
       getConfig,
-    })({
-      file: filePathFull,
-      params,
-    });
+    })(ctx);
   }
 };
 
