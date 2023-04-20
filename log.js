@@ -16,12 +16,14 @@ const getLogger = ({ showPrefix, isDisabled }) => {
   const info = (...args) => console.log(getPrefix("INFO"), ...args);
   const warn = (...args) => console.log(getPrefix("WARN"), ...args);
   const error = (...args) => console.log(getPrefix("ERROR"), ...args);
+  const raw = (...args) => console.log(...args);
 
   return {
     debug,
     error,
     info,
     warn,
+    raw,
   };
 };
 

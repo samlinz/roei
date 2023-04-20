@@ -11,6 +11,7 @@ Add to bachrc or zshrc etc.
 alias t="npx timer"
 alias to="npx timer open"
 alias tr="npx timer reaktor"
+alias tl="npx timer list"
 alias toihin="npx timer reaktor Töiden aloittaminen"
 alias toista="npx timer reaktor Töiden lopettaminen"
 ```

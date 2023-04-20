@@ -29,6 +29,7 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
     const currentDate = new Date().getDate();
 
     let firstTimestamp = null;
+    let lastTimestamp = null;
 
     for (const row of rows) {
       if (!isRowLogRow(row)) continue;
@@ -38,6 +39,7 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
       if (!firstTimestamp) {
         firstTimestamp = parsed.date;
       }
+      lastTimestamp = parsed.date;
       result.push(row);
     }
 
@@ -45,9 +47,15 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
 
     const now = new Date();
     const firstTimestampParsed = parseISO(firstTimestamp);
+    const lastTimestampParsed = parseISO(lastTimestamp);
 
-    const diff = differenceInMinutes(now, firstTimestampParsed);
-    const diffHours = (diff / 60).toFixed(2);
+    const diffHours1 = (
+      differenceInMinutes(now, firstTimestampParsed) / 60
+    ).toFixed(2);
+
+    const diffHours2 = (
+      differenceInMinutes(lastTimestampParsed, firstTimestampParsed) / 60
+    ).toFixed(2);
 
     const timeStartString = `${formatDigits(
       firstTimestampParsed.getHours()
@@ -58,11 +66,15 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
     )}`;
 
     log.info(
-      `Total hours today from ${timeStartString} to ${timeStopString}: ${diffHours}`
+      `Hours from ${timeStartString} to ${timeStopString}: ${diffHours1} (current time)`
+    );
+
+    log.info(
+      `Hours from ${timeStartString} to ${timeStopString}: ${diffHours2} (last entry)`
     );
 
     log.info("Rows today:");
-    log.info(result.join("\n"));
+    log.raw(result.join("\n"));
   };
 
   const handleRemove = async () => {
