@@ -49,13 +49,16 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
     const firstTimestampParsed = parseISO(firstTimestamp);
     const lastTimestampParsed = parseISO(lastTimestamp);
 
-    const diffHours1 = (
-      differenceInMinutes(now, firstTimestampParsed) / 60
-    ).toFixed(2);
+    const lunchMinutes = getConfig("removeLunchMinutes") || 0;
+    const isLunchEnabled = lunchMinutes > 0;
 
-    const diffHours2 = (
-      differenceInMinutes(lastTimestampParsed, firstTimestampParsed) / 60
-    ).toFixed(2);
+    const d1 = differenceInMinutes(now, firstTimestampParsed);
+    const d2 = d1 - lunchMinutes;
+    const diffHours1 = (d2 / 60).toFixed(2);
+
+    const d3 = differenceInMinutes(lastTimestampParsed, firstTimestampParsed);
+    const d4 = d3 - lunchMinutes;
+    const diffHours2 = (d4 / 60).toFixed(2);
 
     const timeStartString = `${formatDigits(
       firstTimestampParsed.getHours()
@@ -72,6 +75,10 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
     log.info(
       `Hours from ${timeStartString} to ${timeStopString}: ${diffHours2} (last entry)`
     );
+
+    if (isLunchEnabled) {
+      log.info(`Lunch time: ${lunchMinutes} minutes taken into account`);
+    }
 
     log.info("Rows today:");
     log.raw(result.join("\n"));
