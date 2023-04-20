@@ -1,0 +1,6 @@
+module.exports = {
+  CHAR_SEPARATOR: "=",
+  STR_ACTIVITY_START: "START",
+  STR_ACTIVITY_STOP: "STOP",
+  STR_EMPTY_DESCRIPTION: "-",
+};

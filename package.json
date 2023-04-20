@@ -13,5 +13,8 @@
   },
   "bin": {
     "timer": "./index.js"
+  },
+  "devDependencies": {
+    "eslint": "^8.38.0"
   }
 }
