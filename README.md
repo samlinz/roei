@@ -1,6 +1,6 @@
 # röi
 
-Objectively best time tracking software for professional* consultants. Kurkkumopo edition.
+Objectively the best time tracking software for professional* consultant(s).
 
 ## Installation
 
@@ -9,9 +9,15 @@ In project folder root run `npm link`
 ## Commands
 
 `list`
+
 `log category [time] [description]`
+
 `start [time] description`
+
 `stop`
+
+`open`
+- 
 
 Examples
 
