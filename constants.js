@@ -1,6 +1,20 @@
+const COMMANDS = {
+  CMD_LOG: "log",
+  CMD_START_ACTIVITY: "start",
+  CMD_STOP_ACTIVITY: "stop",
+  CMD_LIST: "list",
+  CMD_PAUSE: "pause",
+  CMD_REMOVE_LAST: "rm",
+  CMD_OPEN_EDITOR: "open",
+};
 module.exports = {
   CHAR_SEPARATOR: "=",
+  STR_ACTIVITY_PAUSE_START: "PAUSE_START",
+  STR_ACTIVITY_PAUSE_STOP: "PAUSE_STOP",
   STR_ACTIVITY_START: "START",
   STR_ACTIVITY_STOP: "STOP",
   STR_EMPTY_DESCRIPTION: "-",
+  STR_EMPTY_CATEGORY: "-",
+  ...COMMANDS,
+  ENABLED_COMMANDS: [...Object.values(COMMANDS)],
 };

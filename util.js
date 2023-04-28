@@ -1,7 +1,14 @@
 const fs = require("fs").promises;
 const path = require("path");
 const { normalizeCategory, getFormattedDate } = require("./string");
-const { CHAR_SEPARATOR, STR_EMPTY_DESCRIPTION } = require("./constants");
+const {
+  CHAR_SEPARATOR,
+  STR_EMPTY_DESCRIPTION,
+  STR_ACTIVITY_START,
+  STR_ACTIVITY_PAUSE_START,
+  ENABLED_COMMANDS,
+  STR_EMPTY_CATEGORY,
+} = require("./constants");
 const { parseISO } = require("date-fns");
 const { isTimeValid } = require("./validate");
 
@@ -37,6 +44,18 @@ const getRows = async ({ file }) => {
   return newRows;
 };
 
+const getLastRow = async ({ file }) => {
+  const rows = await getRows({ file });
+  const rowsCopy = [...rows];
+  while (rowsCopy.length > 0) {
+    const row = rowsCopy.pop();
+    if (isRowLogRow(row)) {
+      return row;
+    }
+  }
+  return null;
+};
+
 const fileExists = async (file) => {
   try {
     await fs.access(file, fs.constants.F_OK);
@@ -58,26 +77,37 @@ const isRowLogRow = (row) => {
   return true;
 };
 
-const getActivity = async (row) => {
+const getPauseDesc = (row) => {
   const { desc } = parseRow(row);
   const parts = desc.split(" ");
   const firstPart = parts[0];
   const rest = parts.slice(1).join(" ");
-  if (firstPart === "START") {
+  if (firstPart === STR_ACTIVITY_PAUSE_START) {
     return rest;
   }
   return null;
 };
 
-const parseLogParams = ({ getConfig, params }) => {
+const getActivity = (row) => {
+  const { desc } = parseRow(row);
+  const parts = desc.split(" ");
+  const firstPart = parts[0];
+  const rest = parts.slice(1).join(" ");
+  if (firstPart === STR_ACTIVITY_START) {
+    return rest;
+  }
+  return null;
+};
+
+const parseLogParams = ({ getConfig, params, isCategoryRequired }) => {
   const [cmd1, cmd2, cmd3] = params;
 
-  const isFirstCommandLog = ["log", "start", "stop"].includes(cmd1);
-  const _category = isFirstCommandLog ? cmd2 : cmd1;
-  const time = isFirstCommandLog ? cmd3 : cmd2;
+  const isFirstParameterCommand = ENABLED_COMMANDS.includes(cmd1);
+  const _category = isFirstParameterCommand ? cmd2 : cmd1;
+  const time = isFirstParameterCommand ? cmd3 : cmd2;
   const timeValid = isTimeValid(time);
 
-  const desc = isFirstCommandLog
+  const desc = isFirstParameterCommand
     ? timeValid
       ? params.slice(3).join(" ")
       : params.slice(2).join(" ")
@@ -85,8 +115,16 @@ const parseLogParams = ({ getConfig, params }) => {
     ? params.slice(2).join(" ")
     : params.slice(1).join(" ");
 
+  const defaultCategory = getConfig("defaultCategory");
   const category = getCategory({ getConfig })(_category);
   if (!category) {
+    if (isCategoryRequired === false) {
+      return {
+        category: defaultCategory || STR_EMPTY_CATEGORY,
+        desc: STR_EMPTY_DESCRIPTION,
+        time: null,
+      };
+    }
     return Error(`Invalid category: ${_category}`);
   }
 
@@ -153,7 +191,9 @@ module.exports = {
   fileExists,
   getActivity,
   getCategory,
+  getLastRow,
   getLogRow,
+  getPauseDesc,
   getRows,
   isRowLogRow,
   isTimeValid,

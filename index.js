@@ -5,6 +5,14 @@ const { getLogger } = require("./log");
 const { fileExists } = require("./util");
 const { getConfig: _getConfig, getDirFullPath } = require("./config");
 const { buildHandlers } = require("./commands");
+const {
+  CMD_LIST,
+  CMD_REMOVE_LAST,
+  CMD_OPEN_EDITOR,
+  CMD_START_ACTIVITY,
+  CMD_STOP_ACTIVITY,
+  CMD_PAUSE,
+} = require("./constants");
 
 const run = async () => {
   const getConfig = await _getConfig(`${__dirname}/.config.json`);
@@ -35,11 +43,12 @@ const run = async () => {
     return await handlers.handleStatus();
   }
 
-  const isCommandList = cmd1 === "list";
-  const isCommandRemove = cmd1 === "rm";
-  const isCommandOpen = cmd1 === "open";
-  const isCommandStart = cmd1 === "start";
-  const isCommandStop = cmd1 === "stop";
+  const isCommandList = cmd1 === CMD_LIST;
+  const isCommandRemove = cmd1 === CMD_REMOVE_LAST;
+  const isCommandOpen = cmd1 === CMD_OPEN_EDITOR;
+  const isCommandStart = cmd1 === CMD_START_ACTIVITY;
+  const isCommandStop = cmd1 === CMD_STOP_ACTIVITY;
+  const isCommandPause = cmd1 === CMD_PAUSE;
 
   if (isCommandList) {
     await handlers.handleList();
@@ -47,6 +56,8 @@ const run = async () => {
     await handlers.handleRemove();
   } else if (isCommandOpen) {
     await handlers.handleOpen();
+  } else if (isCommandPause) {
+    await handlers.handlePause();
   } else if (isCommandStart || isCommandStop) {
     await handlers.handleActivity({
       isStart: isCommandStart,

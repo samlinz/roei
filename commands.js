@@ -11,11 +11,15 @@ const {
   parseLogParams,
   parseRow,
   writeRows,
+  getLastRow,
+  getPauseDesc,
 } = require("./util");
 const {
   STR_ACTIVITY_START,
   STR_ACTIVITY_STOP,
   CHAR_SEPARATOR,
+  STR_ACTIVITY_PAUSE_START,
+  STR_ACTIVITY_PAUSE_STOP,
 } = require("./constants");
 
 const buildHandlers = ({ getConfig, file, params, log }) => {
@@ -95,10 +99,47 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
     log.info(`REMOVED ${lastRow}`);
   };
 
+  const handlePause = async () => {
+    const parsed = parseLogParams({
+      params,
+      getConfig,
+      isCategoryRequired: false,
+    });
+
+    if (parsed instanceof Error) {
+      log.error(parsed.message);
+      process.exit(1);
+    }
+
+    const { category, desc, time } = parsed;
+    const lastRow = await getLastRow({ file });
+    const activityName = getPauseDesc(lastRow);
+    const fullDateForTime = getFullDateForTime(time);
+    const isAlreadyPaused = !!activityName;
+
+    let row = null;
+    if (isAlreadyPaused) {
+      row = getLogRow({
+        category,
+        time: fullDateForTime,
+        desc: activityName,
+        prefix: STR_ACTIVITY_PAUSE_STOP,
+      });
+    } else {
+      row = getLogRow({
+        category,
+        time: fullDateForTime,
+        desc: desc,
+        prefix: STR_ACTIVITY_PAUSE_START,
+      });
+    }
+    await appendRow({ file, row, time: fullDateForTime, log });
+  };
+
   const handleActivity = async ({ isStart, isStop }) => {
     const rows = await getRows({ file });
     const lastRow = rows[rows.length - 1];
-    const activityName = await getActivity(lastRow);
+    const activityName = getActivity(lastRow);
     const {
       //   date: lastDate,
       category: lastCategory,
@@ -187,12 +228,13 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
   };
 
   return {
-    handleAddLog,
     handleActivity,
-    handleStatus,
+    handleAddLog,
     handleList,
-    handleRemove,
     handleOpen,
+    handlePause,
+    handleRemove,
+    handleStatus,
   };
 };
 
