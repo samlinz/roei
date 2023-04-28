@@ -15,8 +15,10 @@ const { isTimeValid } = require("./validate");
 const getCategory =
   ({ getConfig }) =>
   (str) => {
+    if (!str) return null;
     const categories = getConfig("categories") || {};
     for (const cat of Object.keys(categories)) {
+      if (!cat) continue;
       const config = categories[cat];
       const aliases = config.alias || [];
       const categoryNormalized = normalizeCategory(cat);
