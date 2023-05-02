@@ -17,7 +17,8 @@ In project folder root run `npm link`
 `stop`
 
 `open`
-- 
+
+`pause`
 
 Examples
 
@@ -39,12 +40,12 @@ Where Y == bin name
 
 Add to bachrc or zshrc etc.
 ```bash
-alias t="npx timer"
-alias to="npx timer open"
-alias tr="npx timer reaktor"
-alias tl="npx timer list"
-alias toihin="npx timer reaktor Töiden aloittaminen"
-alias toista="npx timer reaktor Töiden lopettaminen"
+alias t="npx roei"
+alias to="npx roei open"
+alias tr="npx roei reaktor"
+alias tl="npx roei list"
+alias toihin="npx roei reaktor Töiden aloittaminen"
+alias toista="npx roei reaktor Töiden lopettaminen"
 ```
 ## Kurkkumopo
 
