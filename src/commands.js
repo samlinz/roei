@@ -1,5 +1,4 @@
 const { exec } = require("child_process");
-const { parseISO, differenceInMinutes } = require("date-fns");
 const { getFullDateForTime, getFormattedDate } = require("./string");
 const {
   appendRow,
@@ -7,12 +6,12 @@ const {
   getActivity,
   getLogRow,
   getRows,
-  isRowLogRow,
   parseLogParams,
   parseRow,
   writeRows,
   getLastRow,
   getPauseDesc,
+  getDateStatistics,
 } = require("./util");
 const {
   STR_ACTIVITY_START,
@@ -29,63 +28,47 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
 
   const handleList = async () => {
     const rows = await getRows({ file });
-    const result = [];
     const currentDate = new Date().getDate();
-
-    let firstTimestamp = null;
-    let lastTimestamp = null;
-
-    for (const row of rows) {
-      if (!isRowLogRow(row)) continue;
-      const parsed = parseRow(row);
-      if (!parsed) continue;
-      if (parseISO(parsed.date).getDate() !== currentDate) continue;
-      if (!firstTimestamp) {
-        firstTimestamp = parsed.date;
-      }
-      lastTimestamp = parsed.date;
-      result.push(row);
-    }
-
-    const formatDigits = (n) => n.toString().padStart(2, "0");
-
-    const now = new Date();
-    const firstTimestampParsed = parseISO(firstTimestamp);
-    const lastTimestampParsed = parseISO(lastTimestamp);
 
     const lunchMinutes = getConfig("removeLunchMinutes") || 0;
     const isLunchEnabled = lunchMinutes > 0;
 
-    const d1 = differenceInMinutes(now, firstTimestampParsed);
-    const d2 = d1 - lunchMinutes;
-    const diffHours1 = (d2 / 60).toFixed(2);
-
-    const d3 = differenceInMinutes(lastTimestampParsed, firstTimestampParsed);
-    const d4 = d3 - lunchMinutes;
-    const diffHours2 = (d4 / 60).toFixed(2);
-
-    const timeStartString = `${formatDigits(
-      firstTimestampParsed.getHours()
-    )}:${formatDigits(firstTimestampParsed.getMinutes())}`;
-
-    const timeStopString = `${formatDigits(now.getHours())}:${formatDigits(
-      now.getMinutes()
-    )}`;
+    const {
+      hoursUntilLastEntry,
+      hoursUntilNow,
+      timeStartString,
+      timeUntilLastEntryStopString,
+      timeUntilNowStopString,
+      dateRows,
+      hoursUntilLastEntryWithPauses,
+      hoursUntilNowWithPauses,
+      pausedHours,
+    } = getDateStatistics({
+      date: currentDate,
+      lunchMinutes,
+      rows,
+    });
 
     log.info(
-      `Hours from ${timeStartString} to ${timeStopString}: ${diffHours1} (current time)`
+      `Hours from ${timeStartString} to ${timeUntilNowStopString}: ${hoursUntilNowWithPauses} (current time)`
     );
 
     log.info(
-      `Hours from ${timeStartString} to ${timeStopString}: ${diffHours2} (last entry)`
+      `Hours from ${timeStartString} to ${timeUntilLastEntryStopString}: ${hoursUntilLastEntryWithPauses} (last entry)`
     );
 
     if (isLunchEnabled) {
       log.info(`Lunch time: ${lunchMinutes} minutes taken into account`);
     }
 
+    if (pausedHours > 0) {
+      log.info(
+        `Paused time: ${pausedHours} hours taken into account (${hoursUntilNow} until now w/o pauses)`
+      );
+    }
+
     log.info("Rows today:");
-    log.raw(result.join("\n"));
+    log.raw(dateRows.join("\n"));
   };
 
   const handleRemove = async () => {

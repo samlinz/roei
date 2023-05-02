@@ -8,8 +8,9 @@ const {
   STR_ACTIVITY_PAUSE_START,
   ENABLED_COMMANDS,
   STR_EMPTY_CATEGORY,
+  STR_ACTIVITY_PAUSE_STOP,
 } = require("./constants");
-const { parseISO } = require("date-fns");
+const { parseISO, differenceInMinutes } = require("date-fns");
 const { isTimeValid } = require("./validate");
 
 const getCategory =
@@ -79,15 +80,32 @@ const isRowLogRow = (row) => {
   return true;
 };
 
-const getPauseDesc = (row) => {
-  const { desc } = parseRow(row);
+const getDescriptionFirstPart = (desc) => {
   const parts = desc.split(" ");
   const firstPart = parts[0];
   const rest = parts.slice(1).join(" ");
+  return [firstPart, rest];
+};
+
+const getPauseDesc = (row) => {
+  const desc = parseRow(row).desc;
+  const [firstPart, rest] = getDescriptionFirstPart(desc);
   if (firstPart === STR_ACTIVITY_PAUSE_START) {
     return rest;
   }
   return null;
+};
+
+const isPauseStart = (row) => {
+  const desc = parseRow(row).desc;
+  const [firstPart] = getDescriptionFirstPart(desc);
+  return firstPart === STR_ACTIVITY_PAUSE_START;
+};
+
+const isPauseStop = (row) => {
+  const desc = parseRow(row).desc;
+  const [firstPart] = getDescriptionFirstPart(desc);
+  return firstPart === STR_ACTIVITY_PAUSE_STOP;
 };
 
 const getActivity = (row) => {
@@ -189,12 +207,105 @@ const doBackup = async ({ file }) => {
   // console.log(`Backup created: ${backupFile}`);
 };
 
+const getDateStatistics = ({ rows, date, lunchMinutes }) => {
+  if (!rows || rows.length === 0) {
+    return {
+      hoursUntilNow: 0,
+      hoursUntilLastEntry: 0,
+    };
+  }
+
+  let firstTimestamp = null;
+  let lastTimestamp = null;
+
+  const now = new Date();
+
+  const dateRows = [];
+
+  let pauseStart = null;
+  let pausedMinutesTotal = 0;
+
+  const updatePausedMinutes = (stop) => {
+    const parsedStopDate = parseISO(stop);
+    const pausedMinutes = differenceInMinutes(parsedStopDate, pauseStart) || 0;
+    pausedMinutesTotal += pausedMinutes;
+    pauseStart = null;
+  };
+
+  for (const row of rows) {
+    if (!isRowLogRow(row)) continue;
+    const parsed = parseRow(row);
+    if (!parsed) continue;
+    if (parseISO(parsed.date).getDate() !== date) continue;
+    if (!firstTimestamp) {
+      firstTimestamp = parsed.date;
+    }
+    if (isPauseStart(row)) {
+      pauseStart = parseISO(parsed.date);
+    } else if (isPauseStop(row)) {
+      updatePausedMinutes(parsed.date);
+    } else {
+      lastTimestamp = parsed.date;
+    }
+    dateRows.push(row);
+  }
+
+  if (pauseStart) {
+    // Pause was started but not stopped
+    updatePausedMinutes(now);
+  }
+
+  const formatDigits = (n) => n.toString().padStart(2, "0");
+
+  const firstTimestampParsed = parseISO(firstTimestamp);
+  const lastTimestampParsed = parseISO(lastTimestamp);
+
+  const d1 = differenceInMinutes(now, firstTimestampParsed);
+  const d2 = d1 - lunchMinutes;
+  const d2WithPause = d2 - pausedMinutesTotal;
+  const diffHours1 = (d2 / 60).toFixed(2);
+  const diffHours1WithPauses = (d2WithPause / 60).toFixed(2);
+
+  const d3 = differenceInMinutes(lastTimestampParsed, firstTimestampParsed);
+  const d4 = d3 - lunchMinutes;
+  const d4WithPause = d4 - pausedMinutesTotal;
+  const diffHours2 = (d4 / 60).toFixed(2);
+  const diffHours2WithPauses = (d4WithPause / 60).toFixed(2);
+
+  const pausedHours = (pausedMinutesTotal / 60).toFixed(2);
+
+  const timeStartString = `${formatDigits(
+    firstTimestampParsed.getHours()
+  )}:${formatDigits(firstTimestampParsed.getMinutes())}`;
+
+  const timeUntilNowStopString = `${formatDigits(
+    now.getHours()
+  )}:${formatDigits(now.getMinutes())}`;
+
+  const timeUntilLastEntryStopString = `${formatDigits(
+    lastTimestampParsed.getHours()
+  )}:${formatDigits(lastTimestampParsed.getMinutes())}`;
+
+  return {
+    hoursUntilNow: diffHours1,
+    hoursUntilNowWithPauses: diffHours1WithPauses,
+    hoursUntilLastEntry: diffHours2,
+    hoursUntilLastEntryWithPauses: diffHours2WithPauses,
+    timeStartString,
+    timeUntilNowStopString,
+    timeUntilLastEntryStopString,
+    dateRows,
+    pausedHours,
+  };
+};
+
 module.exports = {
   appendRow,
   doBackup,
   fileExists,
   getActivity,
   getCategory,
+  getDateStatistics,
   getLastRow,
   getLogRow,
   getPauseDesc,
