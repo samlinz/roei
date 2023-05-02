@@ -177,10 +177,12 @@ const getLogRow = ({ category, date, time, desc, prefix, postfix }) => {
 };
 
 const doBackup = async ({ file }) => {
-  const backupDir = `${__dirname}/backups`;
+  const backupDir = path.join(__dirname, "..", "backups");
+
   if (!(await fileExists(backupDir))) {
-    fs.makeDirSync(backupDir);
+    await fs.mkdir(backupDir);
   }
+
   const fileBaseName = path.basename(file);
   const backupFile = `${Date.now()}_${fileBaseName}`;
   await fs.copyFile(file, `${backupDir}/${backupFile}`);
