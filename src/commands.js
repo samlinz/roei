@@ -21,20 +21,38 @@ const {
   STR_ACTIVITY_PAUSE_STOP,
 } = require("./constants");
 
+const getFullStatus = async ({ file, getConfig }) => {
+  const rows = await getRows({ file });
+  const currentDate = new Date().getDate();
+  const lunchMinutes = getConfig("removeLunchMinutes") || 0;
+  return getDateStatistics({
+    date: currentDate,
+    lunchMinutes,
+    rows,
+  });
+};
+
 const buildHandlers = ({ getConfig, file, params, log }) => {
   const handleStatus = async () => {
-    log.info("Status");
+    const {
+      hoursUntilLastEntryWithPauses,
+      hoursUntilNowWithPauses,
+      pausedHours,
+    } = await getFullStatus({
+      file,
+      getConfig,
+    });
+
+    log.info(
+      `Today's hours so far: until last entry ${hoursUntilLastEntryWithPauses}, until now ${hoursUntilNowWithPauses}, pauses ${pausedHours}hrs`
+    );
   };
 
   const handleList = async () => {
-    const rows = await getRows({ file });
-    const currentDate = new Date().getDate();
-
     const lunchMinutes = getConfig("removeLunchMinutes") || 0;
     const isLunchEnabled = lunchMinutes > 0;
 
     const {
-      hoursUntilLastEntry,
       hoursUntilNow,
       timeStartString,
       timeUntilLastEntryStopString,
@@ -43,10 +61,9 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
       hoursUntilLastEntryWithPauses,
       hoursUntilNowWithPauses,
       pausedHours,
-    } = getDateStatistics({
-      date: currentDate,
-      lunchMinutes,
-      rows,
+    } = await getFullStatus({
+      file,
+      getConfig,
     });
 
     log.info(
