@@ -1,6 +1,6 @@
 # röi
 
-Objectively the best time tracking software for professional* consultant(s).
+Objectively the best time tracking software for professional* consultant(s). Personal project for personal use, use with caution.
 
 ## Installation
 
@@ -42,10 +42,10 @@ Add to bachrc or zshrc etc.
 ```bash
 alias t="npx roei"
 alias to="npx roei open"
-alias tr="npx roei reaktor"
+alias tr="npx roei firma"
 alias tl="npx roei list"
-alias toihin="npx roei reaktor Töiden aloittaminen"
-alias toista="npx roei reaktor Töiden lopettaminen"
+alias toihin="npx roei firma Töiden aloittaminen"
+alias toista="npx roei firma Töiden lopettaminen"
 ```
 ## Kurkkumopo
 
