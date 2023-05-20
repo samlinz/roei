@@ -9,18 +9,24 @@ In project folder root run `npm link`
 ## Commands
 
 `list`
+- List rows for current date with total hours
 
 `log category [time] [description]`
+- Log row for `category` with optional timestamp and description (default: current time)
 
 `start [time] description`
+- Start activity with description and optional timestamp (default: current time)
 
 `stop`
+- Stop activity if active
 
 `open`
+- Open raw source text file in Sublime Text
 
 `pause`
+- Start/stop pause which is subtracted from total working hours
 
-Examples
+### Examples
 
 `Y log project1 9:00 started doing things`
  
