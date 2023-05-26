@@ -194,6 +194,33 @@ const getLogRow = ({ category, date, time, desc, prefix, postfix }) => {
   return fullRow;
 };
 
+const getParsedDate = (date) => {
+  const isDate = date instanceof Date;
+  const currentDate = isDate ? date : parseISO(date);
+  return {
+    yyyy: currentDate.getFullYear(),
+    mm: currentDate.getMonth() + 1,
+    dd: currentDate.getDate(),
+  };
+};
+
+const areParsedDatesEqual = (date1, date2) => {
+  const { yyyy: yyyy1, mm: mm1, dd: dd1 } = date1;
+  const { yyyy: yyyy2, mm: mm2, dd: dd2 } = date2;
+  if (yyyy1 !== yyyy2) return false;
+  if (mm1 !== mm2) return false;
+  if (dd1 !== dd2) return false;
+  return true;
+};
+
+const isParsedDate = (date) => {
+  const { yyyy, mm, dd } = date;
+  if (typeof yyyy !== "number") return false;
+  if (typeof mm !== "number") return false;
+  if (typeof dd !== "number") return false;
+  return true;
+};
+
 const doBackup = async ({ file }) => {
   const backupDir = path.join(__dirname, "..", "backups");
 
@@ -234,12 +261,20 @@ const getDateStatistics = ({ rows, date, lunchMinutes }) => {
 
   for (const row of rows) {
     if (!isRowLogRow(row)) continue;
+
     const parsed = parseRow(row);
     if (!parsed) continue;
-    if (parseISO(parsed.date).getDate() !== date) continue;
+
+    const parsedDate1 = getParsedDate(parsed.date);
+    const parsedDate2 = getParsedDate(date);
+    if (!isParsedDate(parsedDate1)) continue;
+    if (!isParsedDate(parsedDate2)) continue;
+    if (!areParsedDatesEqual(parsedDate1, parsedDate2)) continue;
+
     if (!firstTimestamp) {
       firstTimestamp = parsed.date;
     }
+
     if (isPauseStart(row)) {
       pauseStart = parseISO(parsed.date);
     } else if (isPauseStop(row)) {
@@ -247,6 +282,7 @@ const getDateStatistics = ({ rows, date, lunchMinutes }) => {
     } else {
       lastTimestamp = parsed.date;
     }
+
     dateRows.push(row);
   }
 
@@ -301,6 +337,7 @@ const getDateStatistics = ({ rows, date, lunchMinutes }) => {
 
 module.exports = {
   appendRow,
+  areParsedDatesEqual,
   doBackup,
   fileExists,
   getActivity,
@@ -308,6 +345,7 @@ module.exports = {
   getDateStatistics,
   getLastRow,
   getLogRow,
+  getParsedDate,
   getPauseDesc,
   getRows,
   isRowLogRow,

@@ -23,10 +23,9 @@ const {
 
 const getFullStatus = async ({ file, getConfig }) => {
   const rows = await getRows({ file });
-  const currentDate = new Date().getDate();
   const lunchMinutes = getConfig("removeLunchMinutes") || 0;
   return getDateStatistics({
-    date: currentDate,
+    date: new Date(),
     lunchMinutes,
     rows,
   });
