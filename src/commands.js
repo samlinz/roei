@@ -195,12 +195,13 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
     }
   };
 
-  const handleOpen = async () => {
+  const handleOpen = async ({ openFileCommand }) => {
+    if (!openFileCommand) {
+      log.error("No open command provided in config");
+      return;
+    }
     log.info(`Opening file: ${file}`);
-    const cmd = [
-      "'/Applications/Sublime Text.app/Contents/SharedSupport/bin/subl'",
-      file,
-    ].join(" ");
+    const cmd = [openFileCommand, file].join(" ");
     log.info(cmd);
     await exec(cmd);
   };

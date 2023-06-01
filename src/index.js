@@ -55,7 +55,9 @@ const run = async () => {
   } else if (isCommandRemove) {
     await handlers.handleRemove();
   } else if (isCommandOpen) {
-    await handlers.handleOpen();
+    await handlers.handleOpen({
+      openFileCommand: getConfig("openFileCommand"),
+    });
   } else if (isCommandPause) {
     await handlers.handlePause();
   } else if (isCommandStart || isCommandStop) {
