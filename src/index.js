@@ -12,10 +12,12 @@ const {
   CMD_START_ACTIVITY,
   CMD_STOP_ACTIVITY,
   CMD_PAUSE,
+  CMD_OPEN_CONFIG,
 } = require("./constants");
 
 const run = async () => {
-  const getConfig = await _getConfig(`${__dirname}/.config.json`);
+  const configFilePath = `${__dirname}/.config.json`;
+  const getConfig = await _getConfig(configFilePath);
   const FILE = getConfig("file");
   const filePathFull = getDirFullPath(FILE);
 
@@ -49,6 +51,8 @@ const run = async () => {
   const isCommandStart = cmd1 === CMD_START_ACTIVITY;
   const isCommandStop = cmd1 === CMD_STOP_ACTIVITY;
   const isCommandPause = cmd1 === CMD_PAUSE;
+  const isCommandConfig = cmd1 === CMD_OPEN_CONFIG;
+  const openFileCommand = getConfig("openFileCommand");
 
   if (isCommandList) {
     await handlers.handleList();
@@ -56,7 +60,7 @@ const run = async () => {
     await handlers.handleRemove();
   } else if (isCommandOpen) {
     await handlers.handleOpen({
-      openFileCommand: getConfig("openFileCommand"),
+      openFileCommand,
     });
   } else if (isCommandPause) {
     await handlers.handlePause();
@@ -64,6 +68,11 @@ const run = async () => {
     await handlers.handleActivity({
       isStart: isCommandStart,
       isStop: isCommandStop,
+    });
+  } else if (isCommandConfig) {
+    await handlers.handleOpen({
+      openFileCommand,
+      overrideFile: configFilePath,
     });
   } else {
     // Default is add new log

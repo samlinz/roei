@@ -6,6 +6,7 @@ const COMMANDS = {
   CMD_PAUSE: "pause",
   CMD_REMOVE_LAST: "rm",
   CMD_OPEN_EDITOR: "open",
+  CMD_OPEN_CONFIG: "config",
 };
 module.exports = {
   CHAR_SEPARATOR: "=",

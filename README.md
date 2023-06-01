@@ -26,6 +26,9 @@ In project folder root run `npm link`
 `pause`
 - Start/stop pause which is subtracted from total working hours
 
+`config`
+- Open config file
+
 ### Examples
 
 `Y log project1 9:00 started doing things`

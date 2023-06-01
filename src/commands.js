@@ -195,14 +195,18 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
     }
   };
 
-  const handleOpen = async ({ openFileCommand }) => {
+  const handleOpen = async ({ openFileCommand, overrideFile }) => {
+    const fileToOpen = overrideFile || file;
+
     if (!openFileCommand) {
       log.error("No open command provided in config");
       return;
     }
-    log.info(`Opening file: ${file}`);
-    const cmd = [openFileCommand, file].join(" ");
+
+    log.info(`Opening file: ${fileToOpen}`);
+    const cmd = [openFileCommand, fileToOpen].join(" ");
     log.info(cmd);
+
     await exec(cmd);
   };
 
