@@ -9,6 +9,7 @@ const {
   ENABLED_COMMANDS,
   STR_EMPTY_CATEGORY,
   STR_ACTIVITY_PAUSE_STOP,
+  STR_ACTIVITY_PAUSE_SINGLE,
 } = require("./constants");
 const { parseISO, differenceInMinutes } = require("date-fns");
 const { isTimeValid } = require("./validate");
@@ -102,6 +103,12 @@ const isPauseStart = (row) => {
   return firstPart === STR_ACTIVITY_PAUSE_START;
 };
 
+const isPauseSingle = (row) => {
+  const desc = parseRow(row).desc;
+  const [firstPart] = getDescriptionFirstPart(desc);
+  return firstPart === STR_ACTIVITY_PAUSE_SINGLE;
+};
+
 const isPauseStop = (row) => {
   const desc = parseRow(row).desc;
   const [firstPart] = getDescriptionFirstPart(desc);
@@ -119,7 +126,34 @@ const getActivity = (row) => {
   return null;
 };
 
-const parseLogParams = ({ getConfig, params, isCategoryRequired }) => {
+const getTotalHours = ({ hour, min }) => {
+  const total = hour + min / 60;
+  return total;
+};
+
+const getTotalMinutes = ({ hour, min }) => {
+  const total = (hour ?? 0) * 60 + min;
+  return total;
+};
+
+const parseTimeSpan = (time) => {
+  const suffix = time.replace(/\d/g, "");
+  const isHour = ["h"].includes(suffix);
+  const isMinute = ["min", "m"].includes(suffix);
+  const isValid = isHour || isMinute;
+  if (!isValid) return Error(`Invalid time qualifier for '${time}'`);
+  const value = parseInt(time.replace(/\D/g, ""), 10);
+  if (isHour) return { hour: value, min: 0 };
+  if (isMinute) return { hour: 0, min: value };
+  return Error(`Logic error in parseTimeToHours for '${time}'`);
+};
+
+const parseLogParams = ({
+  getConfig,
+  params,
+  isCategoryRequired,
+  isDescriptionRequired,
+}) => {
   const [cmd1, cmd2, cmd3] = params;
 
   const isFirstParameterCommand = ENABLED_COMMANDS.includes(cmd1);
@@ -146,6 +180,10 @@ const parseLogParams = ({ getConfig, params, isCategoryRequired }) => {
       };
     }
     return Error(`Invalid category: ${_category}`);
+  }
+
+  if (!desc && isDescriptionRequired) {
+    return Error("Description is required");
   }
 
   return {
@@ -279,6 +317,17 @@ const getDateStatistics = ({ rows, date, lunchMinutes }) => {
       pauseStart = parseISO(parsed.date);
     } else if (isPauseStop(row)) {
       updatePausedMinutes(parsed.date);
+    } else if (isPauseSingle(row)) {
+      const { desc } = parsed;
+      const split = desc.split(" ");
+      const secondWord = split[1];
+      const timeSpan = parseTimeSpan(secondWord);
+      if (timeSpan instanceof Error) {
+        // logger.error(`Invalid time span: ${firstWord}; ignoring`);
+      } else {
+        const pausedMinutes = getTotalMinutes(timeSpan);
+        pausedMinutesTotal += pausedMinutes;
+      }
     } else {
       lastTimestamp = parsed.date;
     }
@@ -348,10 +397,13 @@ module.exports = {
   getParsedDate,
   getPauseDesc,
   getRows,
+  getTotalHours,
+  getTotalMinutes,
   isRowLogRow,
   isTimeValid,
   noop,
   parseLogParams,
   parseRow,
+  parseTimeSpan,
   writeRows,
 };

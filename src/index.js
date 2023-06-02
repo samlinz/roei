@@ -13,6 +13,7 @@ const {
   CMD_STOP_ACTIVITY,
   CMD_PAUSE,
   CMD_OPEN_CONFIG,
+  CMD_PAUSE_SINGLE,
 } = require("./constants");
 
 const run = async () => {
@@ -51,6 +52,7 @@ const run = async () => {
   const isCommandStart = cmd1 === CMD_START_ACTIVITY;
   const isCommandStop = cmd1 === CMD_STOP_ACTIVITY;
   const isCommandPause = cmd1 === CMD_PAUSE;
+  const isCommandPauseSingle = cmd1 === CMD_PAUSE_SINGLE;
   const isCommandConfig = cmd1 === CMD_OPEN_CONFIG;
   const openFileCommand = getConfig("openFileCommand");
 
@@ -64,6 +66,8 @@ const run = async () => {
     });
   } else if (isCommandPause) {
     await handlers.handlePause();
+  } else if (isCommandPauseSingle) {
+    await handlers.handlePauseSingle();
   } else if (isCommandStart || isCommandStop) {
     await handlers.handleActivity({
       isStart: isCommandStart,

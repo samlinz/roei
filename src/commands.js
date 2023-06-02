@@ -12,6 +12,8 @@ const {
   getLastRow,
   getPauseDesc,
   getDateStatistics,
+  parseTimeSpan,
+  getTotalMinutes,
 } = require("./util");
 const {
   STR_ACTIVITY_START,
@@ -19,6 +21,7 @@ const {
   CHAR_SEPARATOR,
   STR_ACTIVITY_PAUSE_START,
   STR_ACTIVITY_PAUSE_STOP,
+  STR_ACTIVITY_PAUSE_SINGLE,
 } = require("./constants");
 
 const getFullStatus = async ({ file, getConfig }) => {
@@ -98,17 +101,46 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
     log.info(`REMOVED ${lastRow}`);
   };
 
-  const handlePause = async () => {
+  const getParsedParams = (extraArgs = {}) => {
     const parsed = parseLogParams({
       params,
       getConfig,
-      isCategoryRequired: false,
+      ...extraArgs,
     });
 
     if (parsed instanceof Error) {
       log.error(parsed.message);
-      process.exit(1);
+      throw parsed;
     }
+
+    return parsed;
+  };
+
+  const handlePauseSingle = async () => {
+    const { category, desc, time } = getParsedParams({
+      isDescriptionRequired: true,
+    });
+
+    const fullDateForTime = getFullDateForTime(time);
+    const firstDescriptionWord = desc.split(" ")[0];
+    const parseTimeToHours = parseTimeSpan(firstDescriptionWord);
+    if (parseTimeToHours instanceof Error) throw parseTimeToHours;
+
+    const totalHours = getTotalMinutes(parseTimeToHours);
+    const remainingDesc = desc.replace(firstDescriptionWord, "").trim();
+
+    const row = getLogRow({
+      category,
+      time: fullDateForTime,
+      desc: remainingDesc,
+      prefix: `${STR_ACTIVITY_PAUSE_SINGLE} ${totalHours}min`,
+    });
+
+    await appendRow({ file, row, time: fullDateForTime, log });
+  };
+
+  const handlePause = async () => {
+    const parsed = getParsedParams({ isCategoryRequired: false });
 
     const { category, desc, time } = parsed;
     const lastRow = await getLastRow({ file });
@@ -148,7 +180,7 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
     const parsed = isStart ? parseLogParams({ params, getConfig }) : {};
     if (parsed instanceof Error) {
       log.error(parsed.message);
-      process.exit(1);
+      throw parsed;
     }
 
     const { category, desc, time } = parsed;
@@ -214,7 +246,7 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
     const parsed = parseLogParams({ params, getConfig });
     if (parsed instanceof Error) {
       log.error(parsed.message);
-      process.exit(1);
+      throw parsed;
     }
 
     const { category, desc, time } = parsed;
@@ -237,6 +269,7 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
     handleList,
     handleOpen,
     handlePause,
+    handlePauseSingle,
     handleRemove,
     handleStatus,
   };

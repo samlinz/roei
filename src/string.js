@@ -9,6 +9,17 @@ const getFormattedDate = (date) => {
   return format(date, "yyyy-MM-dd HH:mm");
 };
 
+const parseTimeString = (time) => {
+  const [hour, min] = time.split(":");
+  const hourInt = parseInt(hour, 10);
+  const minInt = parseInt(min, 10);
+  if (isNaN(hourInt) || isNaN(minInt)) return Error("Invalid time");
+  return {
+    hour: hourInt,
+    min: minInt,
+  };
+};
+
 const getFullDateForTime = (time) => {
   const now = new Date();
 
@@ -19,13 +30,14 @@ const getFullDateForTime = (time) => {
   const yyyy = now.getFullYear();
   const mm = now.getMonth();
   const dd = now.getDate();
-  const [hh, min] = time.split(":");
-  const full = new Date(yyyy, mm, dd, hh, min);
+  const { hour, min } = parseTimeString(time);
+  const full = new Date(yyyy, mm, dd, hour, min);
   return getFormattedDate(full);
 };
 
 module.exports = {
   getFormattedDate,
-  normalizeCategory,
   getFullDateForTime,
+  normalizeCategory,
+  parseTimeString,
 };
