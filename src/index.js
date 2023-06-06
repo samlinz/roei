@@ -54,6 +54,7 @@ const run = async () => {
   const isCommandPause = cmd1 === CMD_PAUSE;
   const isCommandPauseSingle = cmd1 === CMD_PAUSE_SINGLE;
   const isCommandConfig = cmd1 === CMD_OPEN_CONFIG;
+
   const openFileCommand = getConfig("openFileCommand");
 
   if (isCommandList) {

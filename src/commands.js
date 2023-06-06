@@ -1,5 +1,11 @@
 const { exec } = require("child_process");
-const { getFullDateForTime, getFormattedDate } = require("./string");
+const {
+  getFullDateForTime,
+  getFormattedDate,
+  normalizeString,
+  getWord,
+  isEmptyDescription,
+} = require("./string");
 const {
   appendRow,
   doBackup,
@@ -14,6 +20,7 @@ const {
   getDateStatistics,
   parseTimeSpan,
   getTotalMinutes,
+  parseDate,
 } = require("./util");
 const {
   STR_ACTIVITY_START,
@@ -23,18 +30,38 @@ const {
   STR_ACTIVITY_PAUSE_STOP,
   STR_ACTIVITY_PAUSE_SINGLE,
 } = require("./constants");
+const { getDate, getHours, getMinutes } = require("date-fns");
 
-const getFullStatus = async ({ file, getConfig }) => {
+const getFullStatus = async ({ file, getConfig, now }) => {
   const rows = await getRows({ file });
   const lunchMinutes = getConfig("removeLunchMinutes") || 0;
   return getDateStatistics({
-    date: new Date(),
     lunchMinutes,
     rows,
+    now,
   });
 };
 
+const buildGetParsedParams =
+  ({ params, getConfig, log }) =>
+  (extraArgs = {}) => {
+    const parsed = parseLogParams({
+      params,
+      getConfig,
+      ...extraArgs,
+    });
+
+    if (parsed instanceof Error) {
+      log.error(parsed.message);
+      throw parsed;
+    }
+
+    return parsed;
+  };
+
 const buildHandlers = ({ getConfig, file, params, log }) => {
+  const getParsedParams = buildGetParsedParams({ params, getConfig, log });
+
   const handleStatus = async () => {
     const {
       hoursUntilLastEntryWithPauses,
@@ -43,6 +70,7 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
     } = await getFullStatus({
       file,
       getConfig,
+      now: new Date(),
     });
 
     log.info(
@@ -51,6 +79,32 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
   };
 
   const handleList = async () => {
+    const desc = params?.[1] || "";
+
+    const defaultReferenceDate = new Date();
+
+    let referenceDate = defaultReferenceDate;
+    let showRelativeToNow = true;
+
+    if (!isEmptyDescription(desc)) {
+      const firstArg = getWord(normalizeString(desc), 0);
+      const date = parseDate(firstArg);
+      const hasTimeComponent = getHours(date) > 0 || getMinutes(date) > 0;
+
+      referenceDate = date || referenceDate;
+
+      log.info(
+        `Evaluating in reference to date ${getFormattedDate(referenceDate)}`
+      );
+
+      if (
+        getDate(referenceDate) !== getDate(defaultReferenceDate) &&
+        !hasTimeComponent
+      ) {
+        showRelativeToNow = false;
+      }
+    }
+
     const lunchMinutes = getConfig("removeLunchMinutes") || 0;
     const isLunchEnabled = lunchMinutes > 0;
 
@@ -66,11 +120,14 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
     } = await getFullStatus({
       file,
       getConfig,
+      now: referenceDate,
     });
 
-    log.info(
-      `Hours from ${timeStartString} to ${timeUntilNowStopString}: ${hoursUntilNowWithPauses} (current time)`
-    );
+    if (showRelativeToNow) {
+      log.info(
+        `Hours from ${timeStartString} to ${timeUntilNowStopString}: ${hoursUntilNowWithPauses} (current time)`
+      );
+    }
 
     log.info(
       `Hours from ${timeStartString} to ${timeUntilLastEntryStopString}: ${hoursUntilLastEntryWithPauses} (last entry)`
@@ -82,7 +139,9 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
 
     if (pausedHours > 0) {
       log.info(
-        `Paused time: ${pausedHours} hours taken into account (${hoursUntilNow} until now w/o pauses)`
+        `Paused time: ${pausedHours} hours taken into account${
+          showRelativeToNow ? ` (${hoursUntilNow} until now w/o pauses)` : ""
+        }`
       );
     }
 
@@ -99,21 +158,6 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
     }
     await writeRows({ rows, file });
     log.info(`REMOVED ${lastRow}`);
-  };
-
-  const getParsedParams = (extraArgs = {}) => {
-    const parsed = parseLogParams({
-      params,
-      getConfig,
-      ...extraArgs,
-    });
-
-    if (parsed instanceof Error) {
-      log.error(parsed.message);
-      throw parsed;
-    }
-
-    return parsed;
   };
 
   const handlePauseSingle = async () => {
@@ -243,14 +287,7 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
   };
 
   const handleAddLog = async () => {
-    const parsed = parseLogParams({ params, getConfig });
-    if (parsed instanceof Error) {
-      log.error(parsed.message);
-      throw parsed;
-    }
-
-    const { category, desc, time } = parsed;
-
+    const { category, desc, time } = getParsedParams();
     const fullDateForTime = getFullDateForTime(time);
 
     // Create log row

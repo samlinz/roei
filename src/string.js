@@ -1,5 +1,14 @@
 const { format } = require("date-fns");
 const { isTimeValid } = require("./validate");
+const { STR_EMPTY_DESCRIPTION } = require("./constants");
+
+const getWord = (str, index, separator = " ", defaultValue = null) => {
+  return str.split(separator)[index] ?? defaultValue;
+};
+
+const normalizeString = (str) => {
+  return str.trim().toUpperCase();
+};
 
 const normalizeCategory = (str) => {
   return str.trim().toUpperCase();
@@ -35,9 +44,17 @@ const getFullDateForTime = (time) => {
   return getFormattedDate(full);
 };
 
+const isEmptyDescription = (desc) => {
+  const normalized = normalizeString(desc);
+  return !normalized || normalized === STR_EMPTY_DESCRIPTION;
+};
+
 module.exports = {
   getFormattedDate,
   getFullDateForTime,
+  getWord,
+  isEmptyDescription,
   normalizeCategory,
+  normalizeString,
   parseTimeString,
 };

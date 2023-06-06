@@ -31,6 +31,11 @@ const getCategory =
     return null;
   };
 
+const parseDate = (str) => {
+  const date = parseISO(str);
+  return isNaN(date.getTime()) ? null : date;
+};
+
 const parseRow = (row) => {
   if (!row || row.trim().length === 0) return null;
   const s = row.split(";");
@@ -272,7 +277,11 @@ const doBackup = async ({ file }) => {
   // console.log(`Backup created: ${backupFile}`);
 };
 
-const getDateStatistics = ({ rows, date, lunchMinutes }) => {
+const getDateStatistics = ({ rows, lunchMinutes, now }) => {
+  if (!now) {
+    return Error("getDateStatistics: now is required");
+  }
+
   if (!rows || rows.length === 0) {
     return {
       hoursUntilNow: 0,
@@ -282,8 +291,6 @@ const getDateStatistics = ({ rows, date, lunchMinutes }) => {
 
   let firstTimestamp = null;
   let lastTimestamp = null;
-
-  const now = new Date();
 
   const dateRows = [];
 
@@ -304,7 +311,7 @@ const getDateStatistics = ({ rows, date, lunchMinutes }) => {
     if (!parsed) continue;
 
     const parsedDate1 = getParsedDate(parsed.date);
-    const parsedDate2 = getParsedDate(date);
+    const parsedDate2 = getParsedDate(now);
     if (!isParsedDate(parsedDate1)) continue;
     if (!isParsedDate(parsedDate2)) continue;
     if (!areParsedDatesEqual(parsedDate1, parsedDate2)) continue;
@@ -402,6 +409,7 @@ module.exports = {
   isRowLogRow,
   isTimeValid,
   noop,
+  parseDate,
   parseLogParams,
   parseRow,
   parseTimeSpan,
