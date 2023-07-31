@@ -66,12 +66,18 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
     const {
       hoursUntilLastEntryWithPauses,
       hoursUntilNowWithPauses,
+      hoursUntilLastEntry,
       pausedHours,
     } = await getFullStatus({
       file,
       getConfig,
       now: new Date(),
     });
+
+    if (!hoursUntilLastEntry) {
+      log.info("No entries or not enough entries to calculate hours");
+      return;
+    }
 
     log.info(
       `Today's hours so far: until last entry ${hoursUntilLastEntryWithPauses}, until now ${hoursUntilNowWithPauses}, pauses ${pausedHours}hrs`
@@ -110,6 +116,7 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
 
     const {
       hoursUntilNow,
+      hoursUntilLastEntry,
       timeStartString,
       timeUntilLastEntryStopString,
       timeUntilNowStopString,
@@ -122,6 +129,11 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
       getConfig,
       now: referenceDate,
     });
+
+    if (!hoursUntilLastEntry) {
+      log.info("No entries or not enough entries to calculate hours");
+      return;
+    }
 
     if (showRelativeToNow) {
       log.info(
@@ -140,7 +152,9 @@ const buildHandlers = ({ getConfig, file, params, log }) => {
     if (pausedHours > 0) {
       log.info(
         `Paused time: ${pausedHours} hours taken into account${
-          showRelativeToNow ? ` (${hoursUntilNow} until now w/o pauses)` : ""
+          showRelativeToNow && hoursUntilNow > 0
+            ? ` (${hoursUntilNow} until now w/o pauses)`
+            : ""
         }`
       );
     }

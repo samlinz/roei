@@ -391,6 +391,14 @@ const getDateStatistics = ({ rows, lunchMinutes, now }) => {
     dateRows.push(row);
   }
 
+  if (dateRows.length === 0) {
+    return {
+      hoursUntilNow: 0,
+      hoursUntilLastEntry: 0,
+      dateRows,
+    };
+  }
+
   if (pauseStart) {
     // Pause was started but not stopped
     updatePausedMinutes(now);
@@ -428,10 +436,10 @@ const getDateStatistics = ({ rows, lunchMinutes, now }) => {
   )}:${formatDigits(lastTimestampParsed.getMinutes())}`;
 
   return {
-    hoursUntilNow: diffHours1,
-    hoursUntilNowWithPauses: diffHours1WithPauses,
-    hoursUntilLastEntry: diffHours2,
-    hoursUntilLastEntryWithPauses: diffHours2WithPauses,
+    hoursUntilNow: Math.max(diffHours1, 0),
+    hoursUntilNowWithPauses: Math.max(diffHours1WithPauses, 0),
+    hoursUntilLastEntry: Math.max(diffHours2, 0),
+    hoursUntilLastEntryWithPauses: Math.max(diffHours2WithPauses, 0),
     timeStartString,
     timeUntilNowStopString,
     timeUntilLastEntryStopString,
