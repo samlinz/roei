@@ -327,9 +327,6 @@ const getDateStatistics = ({ rows, lunchMinutes, now }) => {
   let firstTimestamp = null;
   let lastTimestamp = null;
 
-  // Order rows based on time, they might be out of order
-  const orderedRows = orderRows(rows);
-
   // Current date's rows
   const dateRows = [];
 
@@ -343,17 +340,30 @@ const getDateStatistics = ({ rows, lunchMinutes, now }) => {
     pauseStart = null;
   };
 
-  for (const row of orderedRows) {
-    if (!isRowLogRow(row)) continue;
+  const parsedNow = getParsedDate(now);
+
+  // Fetch rows for date of interest (current date or explicitly provided date)
+  const filteredRows = rows.filter((row) => {
+    if (!isRowLogRow(row)) return false;
 
     const parsed = parseRow(row);
-    if (!parsed) continue;
+    if (!parsed) return false;
 
     const parsedDate1 = getParsedDate(parsed.date);
-    const parsedDate2 = getParsedDate(now);
-    if (!isParsedDate(parsedDate1)) continue;
-    if (!isParsedDate(parsedDate2)) continue;
-    if (!areParsedDatesEqual(parsedDate1, parsedDate2)) continue;
+    if (!isParsedDate(parsedDate1)) return false;
+    if (!isParsedDate(parsedNow)) return false;
+    if (!areParsedDatesEqual(parsedDate1, parsedNow)) return false;
+
+    return true;
+  });
+
+  // Order rows based on time, they might be out of order
+  const orderedFilteredRows = orderRows(filteredRows);
+
+  // Second pass to gather info from filtered and ordered rows
+  for (const row of orderedFilteredRows) {
+    const parsed = parseRow(row);
+    if (!parsed) return false;
 
     if (!firstTimestamp) {
       firstTimestamp = parsed.date;
