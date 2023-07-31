@@ -244,16 +244,39 @@ const getParsedDate = (date) => {
     yyyy: currentDate.getFullYear(),
     mm: currentDate.getMonth() + 1,
     dd: currentDate.getDate(),
+    hh: currentDate.getHours(),
+    MM: currentDate.getMinutes(),
   };
 };
 
+const isParsedDateLargerThan = (date1, date2) => {
+  const fields = ["yyyy", "mm", "dd"];
+  for (let field of fields) {
+    if (date1[field] != date2[field]) {
+      return date1[field] > date2[field];
+    }
+  }
+  return false;
+};
+
+const isParsedDateTimeLargerThan = (date1, date2) => {
+  const fields = ["yyyy", "mm", "dd", "hh", "MM"];
+  for (let field of fields) {
+    if (date1[field] != date2[field]) {
+      return date1[field] > date2[field];
+    }
+  }
+  return false;
+};
+
 const areParsedDatesEqual = (date1, date2) => {
-  const { yyyy: yyyy1, mm: mm1, dd: dd1 } = date1;
-  const { yyyy: yyyy2, mm: mm2, dd: dd2 } = date2;
-  if (yyyy1 !== yyyy2) return false;
-  if (mm1 !== mm2) return false;
-  if (dd1 !== dd2) return false;
-  return true;
+  const fields = ["yyyy", "mm", "dd"];
+  return fields.every((field) => date1[field] === date2[field]);
+};
+
+const areParsedDateTimesEqual = (date1, date2) => {
+  const fields = ["yyyy", "mm", "dd", "hh", "MM"];
+  return fields.every((field) => date1[field] === date2[field]);
 };
 
 const isParsedDate = (date) => {
@@ -277,6 +300,18 @@ const doBackup = async ({ file }) => {
   // console.log(`Backup created: ${backupFile}`);
 };
 
+const orderRows = (rows) => {
+  const sortRows = (a, b) => {
+    const { date: date1 } = parseRow(a);
+    const { date: date2 } = parseRow(b);
+    const parsedDate1 = getParsedDate(date1);
+    const parsedDate2 = getParsedDate(date2);
+    if (areParsedDateTimesEqual(parsedDate1, parsedDate2)) return 0;
+    return isParsedDateTimeLargerThan(parsedDate1, parsedDate2) ? 1 : -1;
+  };
+  return [...rows].filter(isRowLogRow).sort(sortRows);
+};
+
 const getDateStatistics = ({ rows, lunchMinutes, now }) => {
   if (!now) {
     return Error("getDateStatistics: now is required");
@@ -292,6 +327,10 @@ const getDateStatistics = ({ rows, lunchMinutes, now }) => {
   let firstTimestamp = null;
   let lastTimestamp = null;
 
+  // Order rows based on time, they might be out of order
+  const orderedRows = orderRows(rows);
+
+  // Current date's rows
   const dateRows = [];
 
   let pauseStart = null;
@@ -304,7 +343,7 @@ const getDateStatistics = ({ rows, lunchMinutes, now }) => {
     pauseStart = null;
   };
 
-  for (const row of rows) {
+  for (const row of orderedRows) {
     if (!isRowLogRow(row)) continue;
 
     const parsed = parseRow(row);
